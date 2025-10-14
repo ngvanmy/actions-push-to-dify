@@ -1,0 +1,67 @@
+name: Push Code to Dify Knownledge Base Selfhost
+
+on:
+  workflow_call:
+    inputs:
+      dify_base_url:
+        description: "Base URL của Dify Selfhost (ví dụ http://192.168.2.100:5001)"
+        required: true
+        type: string
+      knowledge_id:
+        description: "ID của Knowledge Base trong Dify"
+        required: true
+        type: string
+    secrets:
+      dify_api_key:
+        description: "API key từ Dify"
+        required: true
+
+jobs:
+  upload-to-dify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Upload code to Dify
+        run: |
+          python <<'PYCODE'
+          import os, requests, glob
+
+          base = "${{ inputs.dify_base_url }}".rstrip("/")
+          api_key = "${{ secrets.dify_api_key }}"
+          kid = "${{ inputs.knowledge_id }}"
+
+          headers = {"Authorization": f"Bearer {api_key}"}
+
+          patterns = ["**/*.md", "**/*.py", "**/*.txt", "**/*.cs", "**/*.js"]
+          files_to_upload = []
+          for pattern in patterns:
+              files_to_upload.extend(glob.glob(pattern, recursive=True))
+
+          if not files_to_upload:
+              print("⚠️ Không có file nào để upload.")
+              exit(0)
+
+          for path in files_to_upload:
+              try:
+                  with open(path, "rb") as f:
+                      files = {"file": (path, f, "text/plain")}
+                      res = requests.post(
+                          f"{base}/api/v1/knowledge/{kid}/documents/upload",
+                          headers=headers,
+                          files=files
+                      )
+                      print(f"[{res.status_code}] Uploaded {path}")
+              except Exception as e:
+                  print(f"❌ Lỗi upload {path}: {e}")
+          PYCODE
