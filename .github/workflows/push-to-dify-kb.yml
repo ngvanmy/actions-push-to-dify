@@ -57,7 +57,7 @@ jobs:
                   with open(path, "rb") as f:
                       files = {"file": (path, f, "text/plain")}
                       res = requests.post(
-                          f"{base}/api/v1/knowledge/{kid}/documents/upload",
+                          f"{base}/api/v1/datasets/{kid}/documents/create_by_file",
                           headers=headers,
                           files=files
                       )
